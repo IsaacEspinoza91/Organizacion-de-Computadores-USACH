@@ -4,7 +4,7 @@
 .text
 	# Notar:    $s0 = resultado mult
 	addi $t0, $zero, 5	# var   $t0 = primer numero
-	addi $t1, $zero, 5	# var   $t1 = segundo numer
+	addi $t1, $zero, 10	# var   $t1 = segundo numer
 	
 	# Determinar argumentos y llamada a la funcion (subrutina) de multiplicacion
 	add $a0, $zero, $t0	# Argumento 0 guarda el N1
@@ -38,6 +38,9 @@
 	j exit			# Salto al termino del programa
 	
 	
+	
+	
+
 	
 	
 elevado:		#necesita en $a0 la base, y en $a1 el exponente >= 0
@@ -163,6 +166,53 @@ multiplicacion:		# Necesita argumentos en $a0 y $a1, entrega resultado en $v0
 		lw $a1, 28($sp)
 		addi $sp, $sp, 32	# Recupero el espacio en el stack
 		jr $ra			# Termina la funcion y retorno a la instruccion guardada en $ra
+		
+		
+		
+	
+factorial:	# Necesita argumento N en $a0, retorna resultado en $v0
+	addi $sp, $sp, -28	# Determino espacio a usar en el stack
+	sw $t0, 0($sp)		# Guardo valores en el stack
+	sw $t1, 4($sp)
+	sw $t2, 8($sp)
+	sw $t3, 12($sp)
+	sw $ra, 16($sp)		# Guardo el $ra actual para subrutinas anidadas
+	sw $a0, 20($sp)
+	sw $a1, 24($sp)
+	
+	addi $t0, $zero, 1	# Inicializo $t0 con un 1, res = 1
+	addi $t1, $a0, 1 	# Guardo en N+1 en $t1, nMax = N + 1
+	addi $t2, $zero, 1	# Variable I se guarda 1, I = 1
+	
+	# ---- Condicion, si el N es negativo, no realiza la iteracion ----
+	slt $t3, $a0, $zero	# Analizo signo de N
+	bne $t3, $zero, exit_facto	# En caso de que N<0, voy a exit_facto
+	
+	while_factorial:	# Iteracion para calcular el factorial
+		slt $t3, $t2, $t1	# Guardo el signo de i - nMax
+		beqz $t3, exit_facto	# Si el signo es 0, salgo de la iteracion,
+		
+		# Llamar a la funcion multiplicacion
+		add $a0, $zero, $t2	# Argumento 0 guarda el I
+		add $a1, $zero, $t0	# Argumento 1 guarda el res
+		jal multiplicacion	# Ejecuto funcion multiplicacion
+		add $t0, $zero, $v0	# Guardamos el valor de la mult en $t0
+		addi $t2, $t2, 1	# i = i + 1
+		j while_factorial	# Volvemos a iterar el while_factorial
+	
+	exit_facto:
+		add $v0, $zero, $t0	# Guardo el resultado en el registro de retorno
+		lw $t0, 0($sp)		# Guardo valores del stack en donde estaban
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		lw $t3, 12($sp)
+		lw $ra, 16($sp)	
+		lw $a0, 20($sp)
+		lw $a1, 24($sp)
+		addi $sp, $sp, 28	# Recupero el espacio en el stack
+		jr $ra			# Termina la funcion
+		
+		
 		
 		
 exit:	# Termino del programa
