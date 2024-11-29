@@ -3,20 +3,17 @@
 	msj2: .asciiz " = "
 	msj3: .asciiz "."
 	msj4: .asciiz " cos "
+	msj5: .asciiz " ln (1+"
+	backParentesis: .asciiz ")"
 	salto: .asciiz "\n"
 .text
 
 	addi $t0, $zero, 5	# var   $t0 = primer numero
 	
-	# Determinar argumentos y llamada a la funcion (subrutina) de multiplicacion
-	#add $a0, $zero, $t0		# arg1 = x
-	#jal funcion_exponencial
-	#add $s0, $zero, $v0	# Guardamos la parte entera en $s0
-	#add $s1, $zero, $v1	# Guardamos la parte decimal en $s1
-	
-	# Llamar a funcion coseno
+
+	# Llamar a funcion
 	add $a0, $zero, $t0		# arg1 = x
-	jal funcion_coseno
+	jal funcion_ln
 	add $s2, $zero, $v0	# Guardamos la parte entera en $s0
 	add $s3, $zero, $v1	# Guardamos la parte decimal en $s1
 	
@@ -26,19 +23,23 @@
 
 	
 	
-	# funcion coseno
+	# funcion ln
 	li $v0, 4		# Imprimir salto de linea
 	la $a0, salto
 	syscall
 	
-	li $v0, 4		# Imprimir en " cos "
-	la $a0, msj4
+	li $v0, 4		# Imprimir en " ln(1+"
+	la $a0, msj5
 	syscall
 	
 	li $v0, 1		# Imprimir valor N1
 	add $a0, $zero, $t0
 	syscall
 	
+	li $v0, 4		# Imprimir en pantalla ")"
+	la $a0, backParentesis
+	syscall
+		
 	li $v0, 4		# Imprimir en pantalla " = "
 	la $a0, msj2
 	syscall
@@ -268,6 +269,114 @@ funcion_coseno:
 		jr $ra
 		
 
+	
+
+	
+funcion_ln:
+	addi $sp, $sp, -40
+	sw $t0, 0($sp)		# Guardo valores en el stack
+	sw $t1, 4($sp)
+	sw $t2, 8($sp)
+	sw $t3, 12($sp)
+	sw $t4, 16($sp)
+	sw $t5, 20($sp)
+	sw $s0, 24($sp)
+	sw $a0, 28($sp)
+	sw $a1, 32($sp)
+	sw $ra, 36($sp)
+	
+	add $s0, $zero, $a0	# valor X
+	add $t0, $zero, $zero	#   var ResA, para guardar el resultado de la parte entera
+	add $t1, $zero, $zero	#   var ResB, para guardar el resultado de la parte decimal
+	addi $t2, $zero, 1	# var n para iterar
+	
+	while_principal_ln:
+		slti $t3, $t2, 8	# $t3 --> signo de n - 8
+		beqz $t3, salida_while_principal_ln
+		
+		
+		addi $t3, $t2, 1	# $t3 = n + 1 
+		# Llamada a funcion elevado, para calcular (-1)^(n+1)
+		addi $a0, $zero, -1		# arg1 = (-1)
+		add $a1, $zero, $t3		# arg2 = n+1
+		jal elevado
+		add $t3, $zero, $v0	# $t3 = (-1)^(n+1)
+		
+		# Llamada a funcion elevado, calculo de x^n
+		add $a0, $zero, $s0		# arg1 = x
+		add $a1, $zero, $t2		# arg2 = n
+		jal elevado
+		add $t4, $zero, $v0	# $t4 = x^n
+		
+		# Llamada a funcion multi, calculo de   ((-1)^(n+1)) *  (x^n)
+		add $a0, $zero, $t3		# arg1 = (-1)^(n+1)
+		add $a1, $zero, $t4		# arg2 = x^n
+		jal multiplicacion
+		add $t4, $zero, $v0	# $t4 = ((-1)^(n+1)) *  (x^n)
+		
+		# Llamada a funcion division, para calcular (((-1)^(n+1)) *  (x^n)) / n
+		add $a0, $zero, $t4		# numerador = ((-1)^(n+1)) *  (x^n)
+		add $a1, $zero, $t2		# divisor = n
+		jal division
+		add $t4, $zero, $v0	# var resParcialA = parte entera
+		add $t5, $zero, $v1 	# var resParcialB = parte decimal
+		
+		# Sumar valores para cada iteracion
+		add $t0, $t0, $t4	# resA = resA + resParcialA
+		# Notar que si el valor es negativo, la parte decimal se resta, no se suma, pero este valor
+		#   es siempre positivo. Entonces hay que cambiarlo si es el caso
+		slt $t4, $t4, $zero
+		beq $t4, 1, cambio_signo_parte_decimal_ln
+			# caso en que no se cambia el signo
+			add $t1, $t1, $t5	# resB = resB + resParcialB
+			j actualizar_n_ln
+		cambio_signo_parte_decimal_ln:
+			sub $t1, $t1, $t5
+		actualizar_n_ln:
+			addi $t2, $t2, 1	# actualizar iterador, n++
+
+		j while_principal_ln
+	
+	
+	salida_while_principal_ln:
+		# Una vez calculado la suma de la parte entera y la decimal para la serie,
+		#   se debe separar  la parte decimal para obtener los dos primeros valores
+		
+		# ademas se debe convertir a positivo la parte decimal, en el caso que sea negativa
+		slt $t3, $t1, $zero
+		beqz $t3, finalizando_while_ln
+			sub $t1, $zero, $t1
+		
+		finalizando_while_ln:
+		add $a0, $zero, $t1		#arg para obtener 2 valores = parte decimal
+		jal dos_primeros_valores
+		add $t2, $zero, $v0	# $t2 = parte decimal real (dos decimales)
+		
+		beqz $t3, sin_cambio_signo_ln
+			sub $t1, $zero, $t1
+		sin_cambio_signo_ln:
+		add $a0, $t1, $zero	# dividir por 100 para obtener la parte entera
+		addi $a1, $zero, 100	#   es decir, el numero sin los dos primeros valores
+		jal division
+		add $t1, $zero, $v0
+
+		add $t0, $t0, $t1	# $t0 = parte entera real
+		
+		add $v0, $zero, $t0	# Retorno parte entera oficial
+		add $v1, $zero, $t2	# Retorno parte decimal oficial
+		lw $t0, 0($sp)		# Guardo valores en el stack	
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		lw $t3, 12($sp)
+		lw $t4, 16($sp)
+		lw $t5, 20($sp)
+		lw $s0, 24($sp)
+		lw $a0, 28($sp)
+		lw $a1, 32($sp)
+		lw $ra, 36($sp)
+		addi $sp, $sp, 40
+		jr $ra
+		
 	
 	
 	
