@@ -1,22 +1,29 @@
 .data
 	msj1: .asciiz " e^"
-	msj2: .asciiz " =\ "
+	msj2: .asciiz " = "
 	msj3: .asciiz "."
+	msj4: .asciiz " cos "
+	salto: .asciiz "\n"
 .text
 
 	addi $t0, $zero, 5	# var   $t0 = primer numero
 	#addi $t1, $zero, 10	# var   $t1 = segundo numer
 	
 	# Determinar argumentos y llamada a la funcion (subrutina) de multiplicacion
-	add $a0, $zero, $t0	# Argumento 0 guarda el N1
-	#add $a1, $zero, $t1	# Argumento 1 guarda el N2
+	add $a0, $zero, $t0		# arg1 = x
 	jal funcion_exponencial
-	add $s0, $zero, $v0	# Guardamos el valor de la solucion en $s0
-	add $s1, $zero, $v1	# Guardamos la parte decimal del resultado
+	add $s0, $zero, $v0	# Guardamos la parte entera en $s0
+	add $s1, $zero, $v1	# Guardamos la parte decimal en $s1
+	
+	# Llamar a funcion coseno
+	add $a0, $zero, $t0		# arg1 = x
+	jal funcion_coseno
+	add $s2, $zero, $v0	# Guardamos la parte entera en $s0
+	add $s3, $zero, $v1	# Guardamos la parte decimal en $s1
 	
 	
 	# ---- PROCESO DE IMPRIMIR EN PANTALLA EL RESULTADO ----
-	
+	#  funcion exponencial
 	li $v0, 4		# Imprimir en pantalla " e elevado "
 	la $a0, msj1
 	syscall
@@ -40,6 +47,42 @@
 	li $v0, 1		# Imprimir valor parte decimal
 	add $a0, $zero, $s1
 	syscall
+	
+	
+	# funcion coseno
+	li $v0, 4		# Imprimir salto de linea
+	la $a0, salto
+	syscall
+	
+	li $v0, 4		# Imprimir en " cos "
+	la $a0, msj4
+	syscall
+	
+	li $v0, 1		# Imprimir valor N1
+	add $a0, $zero, $t0
+	syscall
+	
+	li $v0, 4		# Imprimir en pantalla " = "
+	la $a0, msj2
+	syscall
+	
+	li $v0, 1		# Imprimir valor parte entera del cos
+	add $a0, $zero, $s2
+	syscall
+	
+	li $v0, 4		# Imprimir en pantalla el punto
+	la $a0, msj3
+	syscall
+	
+	li $v0, 1		# Imprimir valor parte decimal del cos
+	add $a0, $zero, $s3
+	syscall
+		
+	
+	
+	
+	
+	
 	
 	j exit			# Salto al termino del programa
 	
@@ -67,7 +110,7 @@ funcion_exponencial:
 	add $t2, $zero, $zero	# var i para iterar
 	
 	while_principal_exponencial:
-		slti $t3, $t2, 12 	# $t3 --> signo de i - 7
+		slti $t3, $t2, 8	# $t3 --> signo de i - 7
 		beqz $t3, salida_while_principal_exponencial
 		
 		# Llamada a funcion elevado, para calcular X^n, donde n=i
@@ -127,6 +170,111 @@ funcion_exponencial:
 		
 		
 		
+
+	
+	
+	
+funcion_coseno:
+	addi $sp, $sp, -40
+	sw $t0, 0($sp)		# Guardo valores en el stack
+	sw $t1, 4($sp)
+	sw $t2, 8($sp)
+	sw $t3, 12($sp)
+	sw $t4, 16($sp)
+	sw $t5, 20($sp)
+	sw $s0, 24($sp)
+	sw $a0, 28($sp)
+	sw $a1, 32($sp)
+	sw $ra, 36($sp)
+	
+	add $s0, $zero, $a0	# valor X
+	add $t0, $zero, $zero	#   var ResA, para guardar el resultado de la parte entera
+	add $t1, $zero, $zero	#   var Res B, para guardar el resultado de la parte decimal
+	add $t2, $zero, $zero	# var n para iterar
+	
+	while_principal_coseno:
+		slti $t3, $t2, 8	# $t3 --> signo de n - 7
+		beqz $t3, salida_while_principal_coseno
+		
+		# Llamada a funcion elevado, para calcular (-1)^n
+		addi $a0, $zero, -1		# arg1 = (-1)
+		add $a1, $zero, $t2		# arg2 = n
+		jal elevado
+		add $t3, $zero, $v0	# $t3 = (-1)^n
+		
+		# Llamada a funcion multipliciacion, para calcular 2n
+		addi $a0, $zero, 2		# arg1 = 2
+		add $a1, $zero, $t2		# arg2 = n
+		jal multiplicacion
+		add $t4, $zero, $v0	# $t4 = 2n
+		
+		# Llamada a funcion elevado, calculo de x^(2n)
+		add $a0, $zero, $s0		# arg1 = x
+		add $a1, $zero, $t4		# arg2 = 2n
+		jal elevado
+		add $t5, $zero, $v0	# $t5 = x^2n
+		
+		# Llamada a funcion multi, calculo de   ((-1)^n) *  (x^2n)
+		add $a0, $zero, $t3		# arg1 = (-1)^n
+		add $a1, $zero, $t5		# arg2 = x^2n
+		jal multiplicacion
+		add $t3, $zero, $v0	# $t3 = ((-1)^n) *  (x^2n)
+		
+		# Llamada a factorial, calculo de  2n!
+		add $a0, $zero, $t4		# arg1 = 2n
+		jal factorial
+		add $t5, $zero, $v0	# $t5 = 2n!
+		
+		
+		# Llamada a funcion division, para calcular (((-1)^n) *  (x^2n))/(2n!)
+		add $a0, $zero, $t3		# numerador = ((-1)^n) *  (x^2n)
+		add $a1, $zero, $t5		# divisor = 2n!
+		jal division
+		add $t4, $zero, $v0	# var resParcialA = parte entera
+		add $t5, $zero, $v1 	# var resParcialB = parte decimal
+		
+		
+		# Sumar valores para cada iteracion
+		add $t0, $t0, $t4	# resA = resA + resParcialA
+		add $t1, $t1, $t5	# resB = resB + resParcialB
+		addi $t2, $t2, 1	# actualizar iterador, n++
+
+		j while_principal_coseno
+	
+	
+	salida_while_principal_coseno:
+		# Una vez calculado la suma de la parte entera y la decimal para la serie,
+		#   se debe separa la parte decimal para obtener los dos primeros valores
+		add $a0, $zero, $t1		#arg para obtener 2 valores = parte decimal
+		jal dos_primeros_valores
+		add $t2, $zero, $v0	# $t2 = parte decimal real (dos decimales)
+		
+		add $a0, $t1, $zero	# dividir por 100 para obtener la parte entera
+		addi $a1, $zero, 100	#   es decir, el numero sin los dos primeros valores
+		jal division
+		add $t1, $zero, $v0
+
+		add $t0, $t0, $t1	# $t0 = parte entera real
+		
+		add $v0, $zero, $t0	# Retorno parte entera oficial
+		add $v1, $zero, $t2	# Retorno parte decimal oficial
+		lw $t0, 0($sp)		# Guardo valores en el stack	
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		lw $t3, 12($sp)
+		lw $t4, 16($sp)
+		lw $t5, 20($sp)
+		lw $s0, 24($sp)
+		lw $a0, 28($sp)
+		lw $a1, 32($sp)
+		lw $ra, 36($sp)
+		addi $sp, $sp, 40
+		jr $ra
+		
+
+	
+	
+	
 	
 	
 	
