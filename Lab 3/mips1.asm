@@ -1,38 +1,44 @@
 .data
-	msj1: .asciiz " ^ "
-	msj2: .asciiz " = "
+	msj1: .asciiz " e^"
+	msj2: .asciiz " =\ "
+	msj3: .asciiz "."
 .text
-	# Notar:    $s0 = resultado mult
+
 	addi $t0, $zero, 5	# var   $t0 = primer numero
-	addi $t1, $zero, 10	# var   $t1 = segundo numer
+	#addi $t1, $zero, 10	# var   $t1 = segundo numer
 	
 	# Determinar argumentos y llamada a la funcion (subrutina) de multiplicacion
 	add $a0, $zero, $t0	# Argumento 0 guarda el N1
-	add $a1, $zero, $t1	# Argumento 1 guarda el N2
-	jal elevado	# Ejecutamos funcion
-	
+	#add $a1, $zero, $t1	# Argumento 1 guarda el N2
+	jal funcion_exponencial
 	add $s0, $zero, $v0	# Guardamos el valor de la solucion en $s0
+	add $s1, $zero, $v1	# Guardamos la parte decimal del resultado
 	
 	
 	# ---- PROCESO DE IMPRIMIR EN PANTALLA EL RESULTADO ----
-	li $v0, 1		# Imprimir valor N1
-	add $a0, $zero, $t0
-	syscall
 	
-	li $v0, 4		# Imprimir en pantalla " * "
+	li $v0, 4		# Imprimir en pantalla " e elevado "
 	la $a0, msj1
 	syscall
 	
-	li $v0, 1		# Imprimir valor N2
-	add $a0, $zero, $t1
+	li $v0, 1		# Imprimir valor N1
+	add $a0, $zero, $t0
 	syscall
 	
 	li $v0, 4		# Imprimir en pantalla " = "
 	la $a0, msj2
 	syscall
 	
-	li $v0, 1		# Imprimir valor del resultado
+	li $v0, 1		# Imprimir valor parte entera
 	add $a0, $zero, $s0
+	syscall
+	
+	li $v0, 4		# Imprimir en pantalla el punto
+	la $a0, msj3
+	syscall
+	
+	li $v0, 1		# Imprimir valor parte decimal
+	add $a0, $zero, $s1
 	syscall
 	
 	j exit			# Salto al termino del programa
@@ -42,11 +48,94 @@
 	
 	
 	
+funcion_exponencial:
+	addi $sp, $sp, -40
+	sw $t0, 0($sp)		# Guardo valores en el stack
+	sw $t1, 4($sp)
+	sw $t2, 8($sp)
+	sw $t3, 12($sp)
+	sw $t4, 16($sp)
+	sw $t5, 20($sp)
+	sw $s0, 24($sp)
+	sw $a0, 28($sp)
+	sw $a1, 32($sp)
+	sw $ra, 36($sp)
+	
+	add $s0, $zero, $a0	# valor X
+	add $t0, $zero, $zero	#   var ResA, para guardar el resultado de la parte entera
+	add $t1, $zero, $zero	#   var Res B, para guardar el resultado de la parte decimal
+	add $t2, $zero, $zero	# var i para iterar
+	
+	while_principal_exponencial:
+		slti $t3, $t2, 12 	# $t3 --> signo de i - 7
+		beqz $t3, salida_while_principal_exponencial
+		
+		# Llamada a funcion elevado, para calcular X^n, donde n=i
+		add $a0, $zero, $s0		# arg1 = X
+		add $a1, $zero, $t2		# arg2 = i 
+		jal elevado
+		add $t4, $zero, $v0	# $t4 = X^i
+		
+		# Llamada a funcion factorial, para calcular n! = i!
+		add $a0, $zero, $t2		#arg1 = i
+		jal factorial
+		add $t5, $zero, $v0	# $t5 = i!
+		
+		# Llamada a funcion division, para calcular (X^i)/(i!)
+		add $a0, $zero, $t4		# numerador = X^i
+		add $a1, $zero, $t5		# divisor = i!
+		jal division
+		add $t4, $zero, $v0	# var resParcialA = parte entera
+		add $t5, $zero, $v1 	# var resParcialB = parte decimal			# ojo que esta parte puede ser add $t0, $t0,$v0
+		
+		# Sumar valores para cada iteracion
+		add $t0, $t0, $t4	# resA = resA + resParcialA
+		add $t1, $t1, $t5	# resB = resB + resParcialB
+		addi $t2, $t2, 1	# actualizar iterador, i++
+
+		j while_principal_exponencial
+	
+	
+	salida_while_principal_exponencial:
+		# Una vez calculado la suma de la parte entera y la decimal para la serie,
+		#   se debe separa la parte decimal para obtener los dos primeros valores
+		add $a0, $zero, $t1		#arg para obtener 2 valores = parte decimal
+		jal dos_primeros_valores
+		add $t2, $zero, $v0	# $t2 = parte decimal real (dos decimales)
+		
+		add $a0, $t1, $zero	# dividir por 100 para obtener la parte entera
+		addi $a1, $zero, 100	#   es decir, el numero sin los dos primeros valores
+		jal division
+		add $t1, $zero, $v0
+
+		add $t0, $t0, $t1	# $t0 = parte entera real
+		
+		add $v0, $zero, $t0	# Retorno parte entera oficial
+		add $v1, $zero, $t2	# Retorno parte decimal oficial
+		lw $t0, 0($sp)		# Guardo valores en el stack	
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		lw $t3, 12($sp)
+		lw $t4, 16($sp)
+		lw $t5, 20($sp)
+		lw $s0, 24($sp)
+		lw $a0, 28($sp)
+		lw $a1, 32($sp)
+		lw $ra, 36($sp)
+		addi $sp, $sp, 40
+		jr $ra
+		
+		
+		
+	
+	
+	
 dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
-	addi $sp, $sp, -12
+	addi $sp, $sp, -16
 	sw $t0, 0($sp)		# Guardo valores en el stack				ojo $s0000
 	sw $t1, 4($sp)
 	sw $t2, 8($sp)
+	sw $ra, 12($sp)
 	add $t0, $zero, $a0	# var num
 	addi $t1, $zero, 100	# numero 100
 	
@@ -62,7 +151,8 @@ dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
 		lw $t0, 0($sp)		# Guardo valores del stack en donde estaban
 		lw $t1, 4($sp)
 		lw $t2, 8($sp)
-		addi $sp, $sp, 12
+		lw $ra, 12($sp)
+		addi $sp, $sp, 16
 		jr $ra
 	
 	
@@ -248,7 +338,8 @@ division:
 	sw $ra, 20($sp)
 	add $t0, $zero, $a0	# $t0 = Numerador, lo llamamos var I
 	add $t1, $zero, $a1	# $t1 = Denominador, lo llamamos var N
-	
+	add $t3, $zero, $zero
+	add $t4, $zero, $zero
 	
 	# ---- Proceso calculo de la parte entera ----
 	add $a0, $zero, $t0		# inicializo los argumentos, en este caso es irrelevante
@@ -272,7 +363,7 @@ division:
 	# Obtengo calculo del decimal 1
 	add $t3, $zero, $v0		# En var D1 = $t3 se guarda el primer decimal
 	add $t0, $zero, $v1		# Actualizamos el valor del resto I
-	beqz $t0, exit_division		# En caso de solo 1 decimal, salgo de la iteracion
+	beqz $t0, exit_divisionPRE		# En caso de solo 1 decimal, salgo de la iteracion
 	# Determinamos argumentos para la subrutina multiplicar por 10
 	add $a0, $zero, $t0
 	addi $a1, $zero, 10
@@ -294,7 +385,13 @@ division:
 	addi $a1, $zero, 10
 	jal multiplicacion	# en $t3 guardo el primer decimal mult por 10, mas
 	add $t3, $v0, $t4	#  el ultimo decimal. Asi determino la parte decimal total
+	j exit_division
 
+	exit_divisionPRE:	#caso en que solo tenga un decimal, se retorna ejemplo, 2,40 en vez de 2,4
+		add $a0, $zero, $t3
+		addi $a1, $zero, 10
+		jal multiplicacion
+		add $t3, $zero, $v0
 
 	exit_division:		# Salida de la funcion division
 		add $v0, $zero, $t2		# Retorno $v0 guarda la parte entera, E = $t2
