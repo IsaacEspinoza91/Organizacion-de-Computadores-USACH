@@ -38,9 +38,32 @@
 	j exit			# Salto al termino del programa
 	
 	
-	
-	
 
+	
+	
+	
+dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
+	addi $sp, $sp, -12
+	sw $t0, 0($sp)		# Guardo valores en el stack				ojo $s0000
+	sw $t1, 4($sp)
+	sw $t2, 8($sp)
+	add $t0, $zero, $a0	# var num
+	addi $t1, $zero, 100	# numero 100
+	
+	while_dos_primeros_valores:
+		slt $t2, $t1, $t0	# $t2 = signo de (100 - num)
+		beqz $t2, salida_while_dos_pri_valores	# si 100-num >= 0, salgo del bucle
+		addi $t0, $t0, -100	# actualizacion iterador, num = num - 100
+		j while_dos_primeros_valores
+	
+	salida_while_dos_pri_valores:
+		# Retornamos el valor que quedo de la iteracion
+		add $v0, $zero, $t0
+		lw $t0, 0($sp)		# Guardo valores del stack en donde estaban
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		addi $sp, $sp, 12
+		jr $ra
 	
 	
 elevado:		#necesita en $a0 la base, y en $a1 el exponente >= 0
@@ -213,7 +236,121 @@ factorial:	# Necesita argumento N en $a0, retorna resultado en $v0
 		jr $ra			# Termina la funcion
 		
 		
-		
+# --- Subrituna para obtener la division, $a1 (numerador) y $a2 (divisor) como argumentos, 
+#                           retorno en $v0 de parte entera y en $v1 la parte decimal ----
+division:
+	addi $sp, $sp, -24	# Almacenamos valores en el stack
+	sw $t0, 0($sp)
+	sw $t1, 4($sp)
+	sw $t2, 8($sp)
+	sw $t3, 12($sp)
+	sw $t4, 16($sp)
+	sw $ra, 20($sp)
+	add $t0, $zero, $a0	# $t0 = Numerador, lo llamamos var I
+	add $t1, $zero, $a1	# $t1 = Denominador, lo llamamos var N
+	
+	
+	# ---- Proceso calculo de la parte entera ----
+	add $a0, $zero, $t0		# inicializo los argumentos, en este caso es irrelevante
+	add $a1, $zero, $t1
+	jal while_divi
+	# Obtengo calculo de parte entera
+	add $t2, $zero, $v0		# En var E se guarda la parte entera
+	add $t0, $zero, $v1		# Actualizamos el valor del resto I
+	beqz $t0, exit_division		# En caso de division exacta, salgo de la iteracion
+	# Determinamos argumentos para la subrutina multiplicar por 10
+	add $a0, $zero, $t0
+	addi $a1, $zero, 10
+	jal multiplicacion
+	add $t0, $zero, $v0		# Valor multiplicacion I*10
+	
+	
+	# --- Proceso calculo del primer decimal ---
+	add $a0, $zero, $t0		# I actualizado = resto anterior * 10
+	add $a1, $zero, $t1		# valor de N
+	jal while_divi
+	# Obtengo calculo del decimal 1
+	add $t3, $zero, $v0		# En var D1 = $t3 se guarda el primer decimal
+	add $t0, $zero, $v1		# Actualizamos el valor del resto I
+	beqz $t0, exit_division		# En caso de solo 1 decimal, salgo de la iteracion
+	# Determinamos argumentos para la subrutina multiplicar por 10
+	add $a0, $zero, $t0
+	addi $a1, $zero, 10
+	jal multiplicacion
+	add $t0, $zero, $v0		# Valor multiplicacion I*10
+	
+	
+	# --- Proceso calculo del segundo decimal ---
+	add $a0, $zero, $t0		# I actualizado = resto anterior * 10
+	add $a1, $zero, $t1		# valor de N
+	jal while_divi
+	# Obtengo decimal 2
+	add $t4, $zero, $v0		# En var D2 = $t4, se guarda el segundo decimal
+
+
+	# --- Calculo de la parte decimal como un unico valor ---
+	# Determinamos argumentos para la subrutina multiplicar por 10
+	add $a0, $zero, $t3
+	addi $a1, $zero, 10
+	jal multiplicacion	# en $t3 guardo el primer decimal mult por 10, mas
+	add $t3, $v0, $t4	#  el ultimo decimal. Asi determino la parte decimal total
+
+
+	exit_division:		# Salida de la funcion division
+		add $v0, $zero, $t2		# Retorno $v0 guarda la parte entera, E = $t2
+		add $v1, $zero, $t3		# Retorno $v1 guarda la parte decimal
+		lw $t0, 0($sp)
+		lw $t1, 4($sp)
+		lw $t2, 8($sp)
+		lw $t3, 12($sp)
+		lw $t4, 16($sp)
+		lw $ra, 20($sp)
+		addi $sp, $sp, 24
+		jr $ra
+
+
+
+# --- Subrutina que realiza la iteracion para contar la division ----
+# Entrega el numero por el que hay que multiplicarlo con el division
+# para obtener el numero mas cercano inferiormente al dividendo
+while_divi:
+	addi $sp, $sp, -24	# Almacenamos valores en el stack
+	sw $ra, 0($sp)
+	sw $t0, 4($sp)
+	sw $t1, 8($sp)
+	sw $t2, 12($sp)
+	sw $t3, 16($sp)
+	sw $t4, 20($sp)
+	add $t0, $zero, $a0	# $t0 = Numerador, lo llamamos I
+	add $t1, $zero, $a1	# $t1 = Denominador, lo llamamos var N
+	
+	slt $t4, $t0, $t1
+	addi $t2, $zero, 0	# Var J = $t2 = 0,  Aca se calcula la cantidad de iteraciones
+	bnez $t4, salida_ciclo_resta	# Caso dividendo<division, voy a salida y retorno 0
+	
+	ciclo_resta_menor_n:
+		sub $t3, $t0, $t1	# $t3 = I - N
+		sub $t3, $t3, $t1	# $t3 = I - N - N, condicion de salida del prox bucle
+		slti $t3, $t3, 0	# Guardo el signo de 	I - 2*N,
+		addi $t2, $t2, 1	# Contamos la iteracion, J = J + 1
+		sub $t0, $t0, $t1	# I = I - N
+		bne $t3, $zero, salida_ciclo_resta	# Si el signo es cero, salgo de la iteracion
+			j ciclo_resta_menor_n		#  sino, vuelvo a iterar
+	
+	salida_ciclo_resta:
+		add $v0,$zero, $t2	# Guardo el resultado como retorno, $v0 = $t2 = resultado
+		add $v1, $zero, $t0	# Guardo el I como retorno, $v1 = $t0 = I
+		lw $ra, 0($sp)
+		lw $t0, 4($sp)
+		lw $t1, 8($sp)
+		lw $t2, 12($sp)
+		lw $t3, 16($sp)
+		lw $t4, 20($sp)
+		addi $sp, $sp, 24
+		jr $ra
+
+
+
 		
 exit:	# Termino del programa
 	li $v0 10
