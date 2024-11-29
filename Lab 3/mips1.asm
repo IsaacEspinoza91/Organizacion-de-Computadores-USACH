@@ -2,34 +2,68 @@
 	msj1: .asciiz " e^"
 	msj2: .asciiz " = "
 	msj3: .asciiz "."
-	msj4: .asciiz " cos "
+	msj4: .asciiz " cos("
 	msj5: .asciiz " ln (1+"
 	backParentesis: .asciiz ")"
 	salto: .asciiz "\n"
+	texto1: .asciiz "Por favor, ingrese un numero entero no negativo para obtener las aproximaciones de las funciones: "
 .text
-
-	addi $t0, $zero, 5	# var   $t0 = primer numero
+	li $v0, 4		# Mensaje solictar numero
+	la $a0, texto1
+	syscall
+	
+	li $v0, 5		# Leo el primer numero
+	syscall
+	add $t0, $zero, $v0	# $t0 = N1
 	
 
-	# Llamar a funcion
+	# funcion Exponencial
 	add $a0, $zero, $t0		# arg1 = x
-	jal funcion_ln
-	add $s2, $zero, $v0	# Guardamos la parte entera en $s0
-	add $s3, $zero, $v1	# Guardamos la parte decimal en $s1
-	
-	
-	# ---- PROCESO DE IMPRIMIR EN PANTALLA EL RESULTADO ----
-	#  funcion exponencial
-
-	
-	
-	# funcion ln
+	jal funcion_exponencial
+	add $s0, $zero, $v0	# Guardamos la parte entera en $s0
+	add $s1, $zero, $v1	# Guardamos la parte decimal en $s1
+	# IMPRIMIR funcion EXPONENCIAL
 	li $v0, 4		# Imprimir salto de linea
 	la $a0, salto
 	syscall
 	
-	li $v0, 4		# Imprimir en " ln(1+"
-	la $a0, msj5
+	li $v0, 4		# Imprimir en " e elevado"
+	la $a0, msj1
+	syscall
+	
+	li $v0, 1		# Imprimir valor N1
+	add $a0, $zero, $t0
+	syscall
+		
+	li $v0, 4		# Imprimir en pantalla " = "
+	la $a0, msj2
+	syscall
+	
+	li $v0, 1		# Imprimir valor parte entera del cos
+	add $a0, $zero, $s0
+	syscall
+	
+	li $v0, 4		# Imprimir en pantalla el punto
+	la $a0, msj3
+	syscall
+	
+	li $v0, 1		# Imprimir valor parte decimal del cos
+	add $a0, $zero, $s1
+	syscall
+	
+	
+	# funcion COSENO
+	add $a0, $zero, $t0		# arg1 = x
+	jal funcion_coseno
+	add $s2, $zero, $v0	# Guardamos la parte entera en $s2
+	add $s3, $zero, $v1	# Guardamos la parte decimal en $s3
+	# IMPRIMIR funcion COSENO
+	li $v0, 4		# Imprimir salto de linea
+	la $a0, salto
+	syscall
+	
+	li $v0, 4		# Imprimir en " cos("
+	la $a0, msj4
 	syscall
 	
 	li $v0, 1		# Imprimir valor N1
@@ -55,20 +89,58 @@
 	li $v0, 1		# Imprimir valor parte decimal del cos
 	add $a0, $zero, $s3
 	syscall
+	
+	
+	
+	# funcion LOG NATURAL
+	add $a0, $zero, $t0		# arg1 = x
+	jal funcion_ln
+	add $s4, $zero, $v0	# Guardamos la parte entera en $s4
+	add $s5, $zero, $v1	# Guardamos la parte decimal en $s5
+	# IMPRIMIR funcion LOG NATURAL
+	li $v0, 4		# Imprimir salto de linea
+	la $a0, salto
+	syscall
+	
+	li $v0, 4		# Imprimir en " ln(1+"
+	la $a0, msj5
+	syscall
+	
+	li $v0, 1		# Imprimir valor N1
+	add $a0, $zero, $t0
+	syscall
+	
+	li $v0, 4		# Imprimir en pantalla ")"
+	la $a0, backParentesis
+	syscall
 		
+	li $v0, 4		# Imprimir en pantalla " = "
+	la $a0, msj2
+	syscall
 	
+	li $v0, 1		# Imprimir valor parte entera del ln
+	add $a0, $zero, $s4
+	syscall
 	
+	li $v0, 4		# Imprimir en pantalla el punto
+	la $a0, msj3
+	syscall
 	
-	
-	
-	
+	li $v0, 1		# Imprimir valor parte decimal del ln
+	add $a0, $zero, $s5
+	syscall
+		
+		
+		
 	j exit			# Salto al termino del programa
 	
 	
 
 	
 	
-	
+# --- Funcion exponencial ---
+# Entrada:    $a0 = num
+# Salida:     $v0 = e^num
 funcion_exponencial:
 	addi $sp, $sp, -40
 	sw $t0, 0($sp)		# Guardo valores en el stack
@@ -88,7 +160,7 @@ funcion_exponencial:
 	add $t2, $zero, $zero	# var i para iterar
 	
 	while_principal_exponencial:
-		slti $t3, $t2, 8	# $t3 --> signo de i - 7
+		slti $t3, $t2, 7	# $t3 --> signo de i - 7 ------> son 7 ITERACIONES
 		beqz $t3, salida_while_principal_exponencial
 		
 		# Llamada a funcion elevado, para calcular X^n, donde n=i
@@ -151,7 +223,9 @@ funcion_exponencial:
 
 	
 	
-	
+# --- Funcion coseno ---
+# Entrada:   $a0 = num
+# Salida:    $v0 = cos (num)
 funcion_coseno:
 	addi $sp, $sp, -40
 	sw $t0, 0($sp)		# Guardo valores en el stack
@@ -171,7 +245,7 @@ funcion_coseno:
 	add $t2, $zero, $zero	# var n para iterar
 	
 	while_principal_coseno:
-		slti $t3, $t2, 6	# $t3 --> signo de n - 8
+		slti $t3, $t2, 4	# $t3 --> signo de n - 4   -----> son 4 TERMINOS
 		beqz $t3, salida_while_principal_coseno
 		
 		# Llamada a funcion elevado, para calcular (-1)^n
@@ -271,7 +345,9 @@ funcion_coseno:
 
 	
 
-	
+# --- Funcion Ln ---
+# Entrada: $a0 = num
+# Salida:  $v0 = ln (1+num)
 funcion_ln:
 	addi $sp, $sp, -40
 	sw $t0, 0($sp)		# Guardo valores en el stack
@@ -291,7 +367,7 @@ funcion_ln:
 	addi $t2, $zero, 1	# var n para iterar
 	
 	while_principal_ln:
-		slti $t3, $t2, 8	# $t3 --> signo de n - 8
+		slti $t3, $t2, 8	# $t3 --> signo de n - 8  ---> son 7 ITERACIONES
 		beqz $t3, salida_while_principal_ln
 		
 		
@@ -382,7 +458,10 @@ funcion_ln:
 	
 	
 	
-	
+# --- Funcion dos primeros valores ---
+# Obtiene los dos primeros digitos de un numero, por ejemplo, se ingresa 543542, y retorna 42
+# Entrada: $a0 = num
+# Salida: $v0 = dos primeros valores de num
 dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
 	addi $sp, $sp, -20
 	sw $t0, 0($sp)		# Guardo valores en el stack				ojo $s0000
@@ -408,7 +487,11 @@ dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
 		addi $sp, $sp, 20
 		jr $ra
 	
+
 	
+# --- Funcion elevado ---
+# Entrada:   $a0 = base,    $a1 = exponente
+# Salida:    $v0 = base^exponente
 elevado:		#necesita en $a0 la base, y en $a1 el exponente >= 0
 	addi $sp, $sp, -32
 	sw $t0, 0($sp)		# Guardo valores en el stack
@@ -452,7 +535,9 @@ elevado:		#necesita en $a0 la base, y en $a1 el exponente >= 0
 	
 	
 	
-	
+# --- Funcion multiplicacion ---
+# Entrada:    $a0 = valor1,      $a1 = valor2
+# Salida:    $v0 = valor1 * valor2
 multiplicacion:		# Necesita argumentos en $a0 y $a1, entrega resultado en $v0
 	addi $sp, $sp, -36	# Determino espacio a usar en el stack
 	sw $t0, 0($sp)		# Guardo valores en el stack
@@ -537,8 +622,10 @@ multiplicacion:		# Necesita argumentos en $a0 y $a1, entrega resultado en $v0
 		
 		
 		
-	
-factorial:	# Necesita argumento N en $a0, retorna resultado en $v0
+# --- Funcion factorial ----
+# Entrada:   $a0 = n , para obtener n!
+# Salida:    $v0 = n!
+factorial:
 	addi $sp, $sp, -28	# Determino espacio a usar en el stack
 	sw $t0, 0($sp)		# Guardo valores en el stack
 	sw $t1, 4($sp)
@@ -581,8 +668,9 @@ factorial:	# Necesita argumento N en $a0, retorna resultado en $v0
 		jr $ra			# Termina la funcion
 		
 		
-# --- Subrituna para obtener la division, $a1 (numerador) y $a2 (divisor) como argumentos, 
-#                           retorno en $v0 de parte entera y en $v1 la parte decimal ----
+# --- Funcion division ---
+# Entradas:  $a0 = numerador,          $a1 = divisor
+# Salidas:   $v0 = parte entera resultado,      $v1 = parte decimal del resultado
 division:
 	addi $sp, $sp, -40	# Almacenamos valores en el stack
 	sw $t0, 0($sp)
@@ -598,13 +686,9 @@ division:
 	add $t0, $zero, $a0	# $t0 = Numerador, lo llamamos var I
 	add $t1, $zero, $a1	# $t1 = Denominador, lo llamamos var N
 	add $t2, $zero, $zero	# Guardamos un cero para luego obtener el resultado parte Entera
-	
 	add $s0, $zero, $zero		# var E de parte entera
 	add $s1, $zero, $zero		# var D1 decimal 1
 	add $s2, $zero, $zero		# var D2 decimal 2
-	
-	
-	
 	
 	
 	# ---- Proceso de conversion de los numeros en positivos si es que son negativos ---- 
@@ -625,11 +709,6 @@ division:
 		j operacion_div		# Ambos numeros son positivos voy a la iteracion de mult
 	caso_n2_positivo_div:
 		add $t5, $zero, $t1	# Ambos numeros son positivos, continuo en la iteracion
-	
-	
-	
-	
-	
 	
 	
 	operacion_div:
@@ -729,8 +808,9 @@ division:
 
 
 # --- Subrutina que realiza la iteracion para contar la division ----
-# Entrega el numero por el que hay que multiplicarlo con el division
-# para obtener el numero mas cercano inferiormente al dividendo
+# Entrega el numero por el que hay que multiplicarlo con el division para obtener el numero mas cercano inferiormente al dividendo
+# Entrada:  $a0 = numerador,    $a1 = divisor
+# Salida:  $v0 = numero de iteraciones (division entera),    $v1 = resto de la division
 while_divi:
 	addi $sp, $sp, -28	# Almacenamos valores en el stack
 	sw $ra, 0($sp)
