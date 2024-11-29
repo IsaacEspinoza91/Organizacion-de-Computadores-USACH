@@ -170,7 +170,7 @@ funcion_coseno:
 	add $t2, $zero, $zero	# var n para iterar
 	
 	while_principal_coseno:
-		slti $t3, $t2, 8	# $t3 --> signo de n - 8
+		slti $t3, $t2, 6	# $t3 --> signo de n - 8
 		beqz $t3, salida_while_principal_coseno
 		
 		# Llamada a funcion elevado, para calcular (-1)^n
@@ -213,7 +213,16 @@ funcion_coseno:
 		
 		# Sumar valores para cada iteracion
 		add $t0, $t0, $t4	# resA = resA + resParcialA
-		add $t1, $t1, $t5	# resB = resB + resParcialB
+		# Notar que si el valor es negativo, la parte decimal se resta, no se suma, pero este valor
+		#   es siempre positivo. Entonces hay que cambiarlo si es el caso
+		slt $t4, $t4, $zero
+		beq $t4, 1, cambio_signo_parte_decimal
+			# caso en que no se cambia el signo
+			add $t1, $t1, $t5	# resB = resB + resParcialB
+			j actualizar_n
+		cambio_signo_parte_decimal:
+			sub $t1, $t1, $t5
+		actualizar_n:
 		addi $t2, $t2, 1	# actualizar iterador, n++
 
 		j while_principal_coseno
@@ -221,11 +230,21 @@ funcion_coseno:
 	
 	salida_while_principal_coseno:
 		# Una vez calculado la suma de la parte entera y la decimal para la serie,
-		#   se debe separa la parte decimal para obtener los dos primeros valores
+		#   se debe separar  la parte decimal para obtener los dos primeros valores
+		
+		# ademas se debe convertir a positivo la parte decimal, en el caso que sea negativa
+		slt $t3, $t1, $zero
+		beqz $t3, finalizando_while_cos
+			sub $t1, $zero, $t1
+		
+		finalizando_while_cos:
 		add $a0, $zero, $t1		#arg para obtener 2 valores = parte decimal
 		jal dos_primeros_valores
 		add $t2, $zero, $v0	# $t2 = parte decimal real (dos decimales)
 		
+		beqz $t3, sin_cambio_signo
+			sub $t1, $zero, $t1
+		sin_cambio_signo:
 		add $a0, $t1, $zero	# dividir por 100 para obtener la parte entera
 		addi $a1, $zero, 100	#   es decir, el numero sin los dos primeros valores
 		jal division
@@ -256,7 +275,7 @@ funcion_coseno:
 	
 	
 dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
-	addi $sp, $sp, -16
+	addi $sp, $sp, -20
 	sw $t0, 0($sp)		# Guardo valores en el stack				ojo $s0000
 	sw $t1, 4($sp)
 	sw $t2, 8($sp)
@@ -277,7 +296,7 @@ dos_primeros_valores:	#Funcion que obtiene los dos pimeros valores de un numero
 		lw $t1, 4($sp)
 		lw $t2, 8($sp)
 		lw $ra, 12($sp)
-		addi $sp, $sp, 16
+		addi $sp, $sp, 20
 		jr $ra
 	
 	
